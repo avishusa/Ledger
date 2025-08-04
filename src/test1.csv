@@ -1,0 +1,9 @@
+Date,Merchant,Amount,Description,Payment Method,Category
+2024-08-02,Costco,129.99,Grocery shopping,Card,Groceries
+2024-08-03,Amazon,59.99,Electronics purchase,UPI,Shopping
+2024-08-04,Starbucks,7.5,Coffee,Card,Dining
+2024-08-04,Kroger,38.00,Weekly groceries,Cash,Groceries
+2024-08-05,Apple,999.99,New iPhone,Card,Electronics
+2024-08-05,Walgreens,24.75,Medicines,Card,Health
+2024-08-06,Uber,15.5,Airport ride,UPI,Travel
+2024-08-07,Target,42.85,Home essentials,Cash,Shopping
