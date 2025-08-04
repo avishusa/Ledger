@@ -18,8 +18,7 @@ async function pdfPageToPngBuffer(pdfBuffer: Buffer, pageNum = 1) {
   const viewport = page.getViewport({ scale: 2.5 });
   const canvas = createCanvas(viewport.width, viewport.height);
   const ctx = canvas.getContext("2d");
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  return canvas.toBuffer("image/png");
+await page.render({ canvasContext: ctx as any, viewport }).promise;  return canvas.toBuffer("image/png");
 }
 
 // Call GPT Vision to extract fields
