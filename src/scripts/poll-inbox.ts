@@ -23,45 +23,63 @@ await page.render({ canvasContext: ctx as any, viewport }).promise;  return canv
 
 // Call GPT Vision to extract fields
 async function extractReceiptWithGpt(imageBuffer: Buffer) {
-  const prompt = `
-Extract the following fields from this retail receipt:
-- Store Name
-- Transaction Date (YYYY-MM-DD)
-- Total Amount
-- Payment Method (if visible)
-- Category (eg. Grocery, Dining, Fuel, Pharmacy, Electronics, etc)
-- Description (short summary of the receipt, if possible)
+  const prompt = `Extract the following fields from this retail receipt image:
+- store (string)
+- date (YYYY-MM-DD)
+- amount (number)
+- paymentMethod (string, if visible)
+- category (string, e.g. Grocery, Dining, Fuel, Pharmacy, Electronics, etc)
+- description (string, short summary)
 
-Respond ONLY as JSON, e.g.:
-{"store": "Costco", "date": "2025-07-31", "amount": 135.72, "paymentMethod": "Card", "category": "Wholesale", "description": "Weekly groceries and household items"}
-
-If any field is not clear, write "Unknown" (or 0 for amount).
-DO NOT invent information.
-`;
+Respond ONLY with a single valid JSON object, with no extra text, explanation, or formatting. Do NOT include code block markers, comments, or any other text.
+If any field is not clear, use "Unknown" (or 0 for amount).
+Example response: {"store": "Costco", "date": "2025-07-31", "amount": 135.72, "paymentMethod": "Card", "category": "Wholesale", "description": "Weekly groceries and household items"}`;
 
   const base64Img = imageBuffer.toString("base64");
-  const gptResponse = await openai.chat.completions.create({
-    model: "gpt-4o",
-    max_tokens: 200,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: `data:image/png;base64,${base64Img}` } }
-        ]
-      }
-    ],
-    temperature: 0
-  });
-
-  let parsed: any = {};
+  let gptResponse;
+  let parsed: Record<string, any> = {};
   try {
-    const content = gptResponse.choices[0].message.content || "";
-    const match = content.match(/json\s*([\s\S]+?)/i);
-    const jsonStr = match ? match[1] : content;
-    parsed = JSON.parse(jsonStr);
+    gptResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 200,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${base64Img}` } }
+          ]
+        }
+      ],
+      temperature: 0
+    });
+    let content = gptResponse.choices[0].message.content || "";
+    // Log raw response for debugging
+    console.log("GPT raw response:", content);
+    // Remove code block markers if present
+    content = content.replace(/^```json\s*|^```\s*|```$/gm, "").trim();
+    // Try to extract JSON object from anywhere in the response
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    let jsonStr = '';
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = content.substring(firstBrace, lastBrace + 1);
+    } else {
+      jsonStr = content;
+    }
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (jsonErr) {
+      console.error("Failed to parse JSON from GPT response:", jsonErr, "Raw:", content);
+      parsed = {};
+    }
   } catch (e) {
+    const err = e as any;
+    if (err.status === 429) {
+      console.error("OpenAI rate limit exceeded:", err.message);
+    } else {
+      console.error("OpenAI error:", err.message);
+    }
     parsed = {};
   }
   return {
@@ -72,16 +90,6 @@ DO NOT invent information.
     category: typeof parsed["category"] === "string" ? parsed["category"] : "Unknown",
     description: typeof parsed["description"] === "string" ? parsed["description"] : "",
   };
-}
-
-// Get yesterday's date in RFC 3339 format for Gmail API search
-function getYesterdayGmailQuery() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}/${mm}/${dd}`;
 }
 
 // -------- MAIN SCRIPT ----------
@@ -272,32 +280,10 @@ async function pollLoop() {
 
 // API endpoint handler
 export async function GET(req: Request) {
-  // Authentication check
-  const auth = req.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.ENDPOINT_SECRET}`;
-  if (auth !== expected) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { 
-      status: 401,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+  // ...existing code...
+}
 
-  try {
-    await main();
-    return new Response(JSON.stringify({ 
-      success: true, 
-      message: "Email processing completed" 
-    }), { 
-      status: 200,
-      headers: { "Content-Type": "application/json" }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ 
-      success: false, 
-      error: (error as Error).message 
-    }), { 
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+// Run main() once if executed directly
+if (require.main === module) {
+  main();
 }
