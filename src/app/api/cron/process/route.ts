@@ -83,7 +83,7 @@ DO NOT invent information.
 }
 
 export async function GET() {
-console.log("API ***** Reached);
+console.log("API ***** Reached");
   try {
     // 1. Get all users who have a Google OAuth account linked
     const googleAccounts = await prisma.account.findMany({
