@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Hit the Vercel email poller endpoint
         env:
-          ENDPOINT_URL: https://ledger-4u4h.vercel.app/api/cron/process-emails
+          ENDPOINT_URL: https://ledger-4u4h.vercel.app/api/cron/process
         run: |
           echo "Calling email poller..."
           # Send secret header for authentication; do not echo the secret itself.
