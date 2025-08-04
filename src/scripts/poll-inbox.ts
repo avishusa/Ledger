@@ -2,7 +2,7 @@ import "dotenv/config";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 import { createCanvas } from "canvas";
 import { OpenAI } from "openai";
-import { prisma } from "../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { google } from "googleapis";
 import { decode } from "base64-arraybuffer";
 
@@ -58,7 +58,7 @@ DO NOT invent information.
   let parsed: any = {};
   try {
     const content = gptResponse.choices[0].message.content || "";
-    const match = content.match(/```json\s*([\s\S]+?)```/i);
+    const match = content.match(/json\s*([\s\S]+?)/i);
     const jsonStr = match ? match[1] : content;
     parsed = JSON.parse(jsonStr);
   } catch (e) {
@@ -119,7 +119,7 @@ async function main() {
       const freshAccessToken = credentials.access_token;
       
       if (!freshAccessToken) {
-        console.log(`[${email}] Failed to get fresh access token`);
+      console.log(`[${email}] Failed to get fresh access token`);
         continue;
       }
 
@@ -133,7 +133,7 @@ async function main() {
       const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
       // 3. Search for unread emails with PDF attachments since yesterday
-      const query = `has:attachment filename:pdf newer_than:1d is:unread`;
+      const query = "has:attachment filename:pdf newer_than:1d is:unread";
       console.log(`[${email}] Searching for emails with query: ${query}`);
       
       const listRes = await gmail.users.messages.list({
@@ -269,4 +269,35 @@ async function pollLoop() {
     await new Promise(res => setTimeout(res, 2 * 60 * 1000));
   }
 }
-pollLoop();
+
+// API endpoint handler
+export async function GET(req: Request) {
+  // Authentication check
+  const auth = req.headers.get("authorization") || "";
+  const expected = `Bearer ${process.env.ENDPOINT_SECRET}`;
+  if (auth !== expected) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+      status: 401,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
+  try {
+    await main();
+    return new Response(JSON.stringify({ 
+      success: true, 
+      message: "Email processing completed" 
+    }), { 
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: (error as Error).message 
+    }), { 
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+}
