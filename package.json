@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate": "prisma generate",
+  "postinstall": "npm run generate"
     
   },
   "dependencies": {
