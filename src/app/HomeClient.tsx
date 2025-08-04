@@ -171,7 +171,7 @@ export default function HomeClient() {
         {/* LEFT PANEL: Summary, Recent Imports, Add Ledger */}
         <div className="space-y-4 md:space-y-6 col-span-1">
           <div className="rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6">
-            <LedgerSummary ledger={ledger} comparison={comparison} />
+            <LedgerSummary comparison={comparison} />
           </div>
           <div className="rounded-xl md:rounded-2xl shadow-lg p-3 md:p-6 max-h-[220px] md:max-h-80 overflow-auto">
             <RecentImports refresh={recentRefresh} />
