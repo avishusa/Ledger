@@ -23,6 +23,11 @@ async function pdfPageToPngBuffer(pdfBuffer: Buffer, pageNum = 1) {
 
 // Call GPT Vision to extract fields
 async function extractReceiptWithGpt(imageBuffer: Buffer) {
+  // Debug: Check API key
+  console.log("OPENAI_API_KEY is set:", !!process.env.OPENAI_API_KEY);
+  // Debug: Check image buffer size
+  console.log("Image buffer size:", imageBuffer.length);
+
   const prompt = `
 Extract the following fields from this retail receipt:
 - Store Name
@@ -58,10 +63,13 @@ DO NOT invent information.
   let parsed: any = {};
   try {
     const content = gptResponse.choices[0].message.content || "";
+    // Debug: Log raw GPT response
+    console.log("GPT raw response:", content);
     const match = content.match(/json\s*([\s\S]+?)/i);
     const jsonStr = match ? match[1] : content;
     parsed = JSON.parse(jsonStr);
   } catch (e) {
+    console.error("Failed to parse JSON from GPT response:", e);
     parsed = {};
   }
   return {
