@@ -1,0 +1,32 @@
+name: Poll Emails
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes (minimum allowed interval) -- UTC
+  workflow_dispatch: {}  # manual trigger
+
+concurrency:
+  group: poll-emails
+  cancel-in-progress: false
+
+jobs:
+  call-endpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit the Vercel email poller endpoint
+        env:
+          ENDPOINT_URL: https://ledger-4u4h.vercel.app/api/cron/process-emails
+        run: |
+          echo "Calling email poller..."
+          # Send secret header for authentication; do not echo the secret itself.
+          response=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.ENDPOINT_SECRET }}" \
+            "$ENDPOINT_URL")
+          echo "Endpoint responded with status $response"
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ Email polling completed successfully"
+          else
+            echo "❌ Email polling failed with status $response"
+            exit 1
+          fi
