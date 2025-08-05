@@ -197,32 +197,60 @@ async function main() {
                   description = ""
                 } = result;
 
-                let parsedDate = new Date();
-                if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                  parsedDate = new Date(date);
+                // Case logic for extraction
+                const hasStore = store !== "Unknown" && store.trim() !== "";
+                const hasDate = date !== "Unknown" && date.trim() !== "";
+                const hasAmount = typeof amount === "number" && amount > 0;
+
+                if (!hasStore && !hasDate && !hasAmount) {
+                  // Case 3: Not a receipt
+                  await prisma.ingestLog.create({
+                    data: {
+                      status: "not_receipt",
+                      message: `File ${part.filename} is not a receipt (page ${i})`,
+                      fileName: part.filename
+                    }
+                  });
+                  console.log(`[${email}] File ${part.filename} on page ${i} is not a receipt.`);
+                } else {
+                  let parsedDate = new Date();
+                  if (hasDate && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                    parsedDate = new Date(date);
+                  }
+                  const ledger = await prisma.ledger.create({
+                    data: {
+                      date: parsedDate,
+                      merchant: hasStore ? store : "Unknown",
+                      amount: hasAmount ? amount : 0,
+                      description: description || "",
+                      paymentMethod: paymentMethod || "Unknown",
+                      category: category || "Unknown",
+                    }
+                  });
+                  if (hasStore && hasDate && hasAmount) {
+                    // Case 1: All 3 found
+                    await prisma.ingestLog.create({
+                      data: {
+                        status: "success",
+                        message: `Parsed receipt for ${store} on page ${i}`,
+                        fileName: part.filename,
+                        ledgerId: ledger.id,
+                      }
+                    });
+                    console.log(`[${email}] Successfully processed page ${i} for ${store}`);
+                  } else {
+                    // Case 2: Partial extraction
+                    await prisma.ingestLog.create({
+                      data: {
+                        status: "partial",
+                        message: `Partially extracted receipt for ${part.filename} (page ${i}): store=${hasStore ? store : 'Unknown'}, date=${hasDate ? date : 'Unknown'}, amount=${hasAmount ? amount : 0}`,
+                        fileName: part.filename,
+                        ledgerId: ledger.id,
+                      }
+                    });
+                    console.log(`[${email}] Partially processed page ${i} for ${part.filename}`);
+                  }
                 }
-
-                const ledger = await prisma.ledger.create({
-                  data: {
-                    date: parsedDate,
-                    merchant: store || "Unknown",
-                    amount: typeof amount === "number" && !isNaN(amount) ? amount : 0,
-                    description: description || "",
-                    paymentMethod: paymentMethod || "Unknown",
-                    category: category || "Unknown",
-                  }
-                });
-
-                await prisma.ingestLog.create({
-                  data: {
-                    status: "success",
-                    message: `Parsed receipt for ${store || "Unknown"} on page ${i}`,
-                    fileName: part.filename,
-                    ledgerId: ledger.id,
-                  }
-                });
-                
-                console.log(`[${email}] Successfully processed page ${i} for ${store}`);
               } catch (e) {
                 console.log(`[${email}] Error processing page ${i}:`, e);
                 await prisma.ingestLog.create({

@@ -35,6 +35,7 @@ export default function RecentImports({ refresh = 0 }: { refresh?: number }) {
             >
               <span>
                 {log.status === "success" && "✅"}
+                {log.status === "partial" && "🟡"}
                 {log.status === "not_receipt" && "⚠️"}
                 {log.status === "error" && "❌"}
               </span>
@@ -47,15 +48,6 @@ export default function RecentImports({ refresh = 0 }: { refresh?: number }) {
               <span className="text-xs text-gray-400 sm:ml-auto">
                 {new Date(log.createdAt).toLocaleString()}
               </span>
-              {log.status === "success" && log.ledgerId && (
-                <a
-                  href={`/ledger/${log.ledgerId}`}
-                  className="text-xs text-blue-600 hover:underline mt-1 sm:mt-0 sm:ml-2"
-                  title="Go to entry"
-                >
-                  View
-                </a>
-              )}
             </li>
           )}
         </ul>
