@@ -62,11 +62,16 @@ DO NOT invent information.
 
   let parsed: any = {};
   try {
-    const content = gptResponse.choices[0].message.content || "";
+    let content = gptResponse.choices[0].message.content || "";
     // Debug: Log raw GPT response
     console.log("GPT raw response:", content);
-    const match = content.match(/json\s*([\s\S]+?)/i);
-    const jsonStr = match ? match[1] : content;
+    // Remove markdown code block wrappers
+    content = content.replace(/```[a-zA-Z]*\n?|```/g, "").trim();
+    // Remove leading 'json' if present
+    content = content.replace(/^json\s*/i, "").trim();
+    // Extract first {...} block
+    const jsonMatch = content.match(/{[\s\S]*}/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : content;
     parsed = JSON.parse(jsonStr);
   } catch (e) {
     console.error("Failed to parse JSON from GPT response:", e);
